@@ -1,0 +1,54 @@
+---
+import type { GetStaticPaths } from 'astro';
+import Layout from '../../layouts/Layout.astro';
+import GameCard from '../../components/GameCard.astro';
+import PageHero from '../../components/PageHero.astro';
+import EmptyState from '../../components/EmptyState.astro';
+import PaginationControls from '../../components/PaginationControls.astro';
+import { getDatabase } from '../../lib/db';
+import { getPaginatedGames, getTotalGameCount } from '../../lib/games';
+
+export const prerender = true;
+
+export const getStaticPaths = (async () => {
+    const pageSize = 9;
+    const totalGames = await getTotalGameCount(getDatabase());
+    const totalPages = Math.ceil(totalGames / pageSize);
+
+    return Array.from({ length: Math.max(totalPages - 1, 0) }, (_, index) => ({
+        params: { page: String(index + 2) },
+    }));
+}) satisfies GetStaticPaths;
+
+const pageParam = Number(Astro.params.page);
+
+if (!Number.isInteger(pageParam) || pageParam <= 1) {
+    return Astro.redirect('/404');
+}
+
+const { games, page, totalPages } = await getPaginatedGames(getDatabase(), { page: pageParam, pageSize: 9 });
+---
+
+<Layout title={`Tailspin Toys - Page ${page}`}>
+    <div class="py-8">
+        <PageHero
+            title="Welcome to Tailspin Toys"
+            subtitle="Find your next game! And maybe even back one! Explore our collection!"
+        />
+
+        <div>
+            <h2 class="mb-6 text-2xl font-medium text-slate-100">Featured Games</h2>
+
+            {games.length === 0 ? (
+                <EmptyState text="No games available at the moment." />
+            ) : (
+                <>
+                    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3" data-testid="games-grid">
+                        {games.map((game) => <GameCard game={game} />)}
+                    </div>
+                    <PaginationControls page={page} totalPages={totalPages} />
+                </>
+            )}
+        </div>
+    </div>
+</Layout>

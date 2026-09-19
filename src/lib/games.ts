@@ -1,4 +1,4 @@
-import { eq, asc } from 'drizzle-orm';
+import { eq, asc, count } from 'drizzle-orm';
 import type { Database } from './db';
 import { games, categories, publishers } from '../../db/schema';
 import type { Game } from '../types/game';
@@ -25,6 +25,21 @@ type GameSelectionRow = {
     publisherName: string | null;
 };
 
+export interface GamesPaginationOptions {
+    page: number;
+    pageSize: number;
+}
+
+export interface PaginatedGamesResult {
+    games: Game[];
+    page: number;
+    pageSize: number;
+    totalGames: number;
+    totalPages: number;
+    hasPreviousPage: boolean;
+    hasNextPage: boolean;
+}
+
 function mapGame(row: GameSelectionRow): Game {
     return {
         id: row.id,
@@ -50,6 +65,10 @@ function baseGamesQuery(db: Database) {
         .leftJoin(publishers, eq(games.publisherId, publishers.id));
 }
 
+function toPositiveInteger(value: number, fallback: number): number {
+    return Number.isInteger(value) && value > 0 ? value : fallback;
+}
+
 /** All games ordered by title. */
 export async function getAllGames(db: Database): Promise<Game[]> {
     const rows = await baseGamesQuery(db).orderBy(asc(games.title));
@@ -60,6 +79,34 @@ export async function getAllGames(db: Database): Promise<Game[]> {
 export async function getAllGameIds(db: Database): Promise<number[]> {
     const rows = await db.select({ id: games.id }).from(games).orderBy(asc(games.title));
     return rows.map((row) => row.id);
+}
+
+/** Total number of games in the catalog. */
+export async function getTotalGameCount(db: Database): Promise<number> {
+    const total = await db.select({ value: count() }).from(games).get();
+    return total?.value ?? 0;
+}
+
+/** Games for a page ordered by title with pagination metadata. */
+export async function getPaginatedGames(db: Database, options: GamesPaginationOptions): Promise<PaginatedGamesResult> {
+    const pageSize = toPositiveInteger(options.pageSize, 9);
+    const requestedPage = toPositiveInteger(options.page, 1);
+    const totalGames = await getTotalGameCount(db);
+    const totalPages = totalGames === 0 ? 0 : Math.ceil(totalGames / pageSize);
+    const page = totalPages === 0 ? 1 : Math.min(requestedPage, totalPages);
+    const offset = (page - 1) * pageSize;
+
+    const rows = await baseGamesQuery(db).orderBy(asc(games.title)).limit(pageSize).offset(offset);
+
+    return {
+        games: rows.map(mapGame),
+        page,
+        pageSize,
+        totalGames,
+        totalPages,
+        hasPreviousPage: page > 1,
+        hasNextPage: totalPages > 0 && page < totalPages,
+    };
 }
 
 /** A single game by id, or null when it does not exist. */

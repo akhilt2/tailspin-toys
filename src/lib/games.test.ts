@@ -6,6 +6,8 @@ import {
     getAllGames,
     getAllGameIds,
     getGameById,
+    getPaginatedGames,
+    getTotalGameCount,
 } from './games';
 
 async function seedGames(db: Database, count: number): Promise<void> {
@@ -50,6 +52,47 @@ describe('games data-access helpers', () => {
         const ids = await getAllGameIds(db);
         const all = await getAllGames(db);
         expect(ids).toEqual(all.map((g) => g.id));
+    });
+
+    it('returns the total game count', async () => {
+        await seedGames(db, 4);
+        expect(await getTotalGameCount(db)).toBe(4);
+    });
+
+    it('returns paginated games and metadata', async () => {
+        await seedGames(db, 5);
+        const page = await getPaginatedGames(db, { page: 2, pageSize: 2 });
+        expect(page.games.map((g) => g.title)).toEqual(['Game 03', 'Game 04']);
+        expect(page.totalGames).toBe(5);
+        expect(page.totalPages).toBe(3);
+        expect(page.hasPreviousPage).toBe(true);
+        expect(page.hasNextPage).toBe(true);
+    });
+
+    it('clamps pagination to the last page when page is out of range', async () => {
+        await seedGames(db, 3);
+        const page = await getPaginatedGames(db, { page: 99, pageSize: 2 });
+        expect(page.page).toBe(2);
+        expect(page.games.map((g) => g.title)).toEqual(['Game 03']);
+        expect(page.hasPreviousPage).toBe(true);
+        expect(page.hasNextPage).toBe(false);
+    });
+
+    it('uses fallback pagination values for invalid page and page size', async () => {
+        await seedGames(db, 3);
+        const page = await getPaginatedGames(db, { page: 0, pageSize: 0 });
+        expect(page.page).toBe(1);
+        expect(page.pageSize).toBe(9);
+        expect(page.games.map((g) => g.title)).toEqual(['Game 01', 'Game 02', 'Game 03']);
+    });
+
+    it('returns empty pagination metadata for an empty database', async () => {
+        const page = await getPaginatedGames(db, { page: 1, pageSize: 5 });
+        expect(page.games).toEqual([]);
+        expect(page.totalGames).toBe(0);
+        expect(page.totalPages).toBe(0);
+        expect(page.hasPreviousPage).toBe(false);
+        expect(page.hasNextPage).toBe(false);
     });
 
     it('fetches a single game by id', async () => {
