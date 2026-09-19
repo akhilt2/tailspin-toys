@@ -28,6 +28,7 @@ test.describe('Game Listing and Navigation', () => {
     await test.step('Open the first page and verify pagination controls', async () => {
       await page.goto('/');
       await expect(page.getByTestId('pagination-nav')).toBeVisible();
+      await expect(page.getByTestId('pagination-previous-disabled')).toBeVisible();
       await expect(page.getByTestId('pagination-next')).toHaveAttribute('href', '/page/2');
       await expect(page.getByTestId('pagination-page-1-current')).toHaveAttribute('aria-current', 'page');
     });
@@ -37,7 +38,16 @@ test.describe('Game Listing and Navigation', () => {
       await expect(page).toHaveURL('/page/2');
       await expect(page.getByTestId('games-grid').getByTestId('game-card').first()).toBeVisible();
       await expect(page.getByTestId('pagination-previous')).toHaveAttribute('href', '/');
+      await expect(page.getByTestId('pagination-next')).toHaveAttribute('href', '/page/3');
       await expect(page.getByTestId('pagination-page-2-current')).toHaveAttribute('aria-current', 'page');
+    });
+
+    await test.step('Navigate to the last page and verify boundary disabled state', async () => {
+      await page.getByTestId('pagination-next').click();
+      await expect(page).toHaveURL('/page/3');
+      await expect(page.getByTestId('pagination-next-disabled')).toBeVisible();
+      await expect(page.getByTestId('pagination-previous')).toHaveAttribute('href', '/page/2');
+      await expect(page.getByTestId('pagination-page-3-current')).toHaveAttribute('aria-current', 'page');
     });
   });
 
