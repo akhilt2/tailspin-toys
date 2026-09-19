@@ -5,7 +5,34 @@ interface Props {
 }
 
 const { page, totalPages } = Astro.props;
-const pageNumbers = Array.from({ length: totalPages }, (_, index) => index + 1);
+const maxVisibleMiddlePages = 3;
+
+function getVisiblePageItems(currentPage: number, lastPage: number): Array<number | 'ellipsis'> {
+    if (lastPage <= maxVisibleMiddlePages + 2) {
+        return Array.from({ length: lastPage }, (_, index) => index + 1);
+    }
+
+    const start = Math.max(2, currentPage - 1);
+    const end = Math.min(lastPage - 1, currentPage + 1);
+    const items: Array<number | 'ellipsis'> = [1];
+
+    if (start > 2) {
+        items.push('ellipsis');
+    }
+
+    for (let pageNumber = start; pageNumber <= end; pageNumber += 1) {
+        items.push(pageNumber);
+    }
+
+    if (end < lastPage - 1) {
+        items.push('ellipsis');
+    }
+
+    items.push(lastPage);
+    return items;
+}
+
+const pageItems = getVisiblePageItems(page, totalPages);
 
 function pageHref(pageNumber: number): string {
     return pageNumber === 1 ? '/' : `/page/${pageNumber}`;
@@ -36,24 +63,36 @@ function pageHref(pageNumber: number): string {
                     )}
                 </li>
 
-                {pageNumbers.map((pageNumber) => (
+                {pageItems.map((pageItem, index) => (
                     <li>
-                        {pageNumber === page ? (
+                        {pageItem === 'ellipsis' ? (
                             <span
-                                class="inline-flex items-center rounded-lg border border-blue-500 bg-blue-600/20 px-3 py-2 text-sm font-semibold text-slate-100"
-                                aria-current="page"
-                                data-testid={`pagination-page-${pageNumber}-current`}
+                                class="inline-flex items-center px-1 py-2 text-sm font-medium text-slate-400"
+                                aria-hidden="true"
+                                data-testid={`pagination-ellipsis-${index + 1}`}
                             >
-                                {pageNumber}
+                                …
                             </span>
                         ) : (
-                            <a
-                                href={pageHref(pageNumber)}
-                                class="inline-flex items-center rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-sm font-medium text-slate-100 transition-colors hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                data-testid={`pagination-page-${pageNumber}`}
-                            >
-                                {pageNumber}
-                            </a>
+                            <>
+                                {pageItem === page ? (
+                                    <span
+                                        class="inline-flex items-center rounded-lg border border-blue-500 bg-blue-600/20 px-3 py-2 text-sm font-semibold text-slate-100"
+                                        aria-current="page"
+                                        data-testid={`pagination-page-${pageItem}-current`}
+                                    >
+                                        {pageItem}
+                                    </span>
+                                ) : (
+                                    <a
+                                        href={pageHref(pageItem)}
+                                        class="inline-flex items-center rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-sm font-medium text-slate-100 transition-colors hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        data-testid={`pagination-page-${pageItem}`}
+                                    >
+                                        {pageItem}
+                                    </a>
+                                )}
+                            </>
                         )}
                     </li>
                 ))}

@@ -66,12 +66,12 @@ const { title } = Astro.props;
 
 - Create pages in `src/pages/`
 - File-based routing: `src/pages/about.astro` → `/about`
-- Dynamic routes: `src/pages/game/[id].astro`
+- Dynamic routes: `src/pages/game/[id].astro`, `src/pages/page/[page].astro` (for paginated listings beyond `/`)
 - Provide a branded `src/pages/404.astro` — with static output, any URL with no generated page is a real 404.
 
 ### Dynamic Routes (static output)
 
-With `output: 'static'`, every dynamic route must enumerate its pages with `getStaticPaths()` and set `prerender = true`. Query data in frontmatter using the data-access helpers:
+With `output: 'static'`, every dynamic route must enumerate its pages with `getStaticPaths()` and set `prerender = true`. This includes game detail pages (`game/[id]`) and paginated listing pages (`page/[page]` for pages greater than 1). Query data in frontmatter using the data-access helpers:
 
 ```astro
 ---
